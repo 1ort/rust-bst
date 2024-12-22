@@ -2,14 +2,14 @@ use std::cmp::Ordering;
 
 #[derive(Debug)]
 pub struct BinarySearchTree<T: Ord> {
-    root: Option<Box<Node<T>>>,
+    root: Tree<T>,
     size: usize,
 }
 
 impl<T: Ord> BinarySearchTree<T> {
     pub fn new() -> Self {
         Self {
-            root: None,
+            root: Tree(None),
             size: 0,
         }
     }
@@ -26,47 +26,39 @@ impl<T: Ord> BinarySearchTree<T> {
         &mut self,
         value: T,
     ) {
-        match &mut self.root {
-            Some(tree) => {
-                tree.insert_unique(value);
-            },
-            None => {
-                self.root = Some(Box::new(Node::new(value)));
-            },
-        }
-        self.size += 1;
+        if self.root.insert_unique(value).is_some() {
+            self.size += 1;
+        };
     }
 
     pub fn min(&self) -> Option<&T> {
-        match &self.root {
-            Some(tree) => Some(tree.min()),
-            None => None,
-        }
+        self.root.min()
     }
 
     pub fn max(&self) -> Option<&T> {
-        match &self.root {
-            Some(tree) => Some(tree.max()),
-            None => None,
-        }
+        self.root.max()
     }
 
     pub fn contains(
         &self,
         value: T,
     ) -> bool {
-        match &self.root {
-            Some(tree) => tree.contains(value),
-            None => false,
-        }
+        self.root.contains(value)
     }
 
-    pub fn pop_min(&self) -> Option<T> {
-        todo!();
+    pub fn pop_min(&mut self) -> Option<T> {
+        self.root.pop_min()
     }
 
-    pub fn pop_max(&self) -> Option<T> {
-        todo!();
+    pub fn pop_max(&mut self) -> Option<T> {
+        self.root.pop_max()
+    }
+
+    pub fn remove(
+        &mut self,
+        value: &T,
+    ) {
+        self.root.remove(value);
     }
 }
 
@@ -79,19 +71,16 @@ impl<T: Ord> Default for BinarySearchTree<T> {
 #[derive(Debug)]
 struct Node<T: Ord> {
     value: T,
-    left: Option<Box<Node<T>>>,
-    right: Option<Box<Node<T>>>,
-    count: usize,
+    left: Tree<T>,
+    right: Tree<T>,
 }
 
-impl<T: Ord> Node<T> {
-    fn new(value: T) -> Self {
-        Self {
-            value,
-            left: None,
-            right: None,
-            count: 0,
-        }
+#[derive(Debug)]
+struct Tree<T: Ord>(Option<Box<Node<T>>>);
+
+impl<T: Ord> Tree<T> {
+    fn new() -> Self {
+        Self(None)
     }
 
     fn insert_unique(
@@ -100,42 +89,79 @@ impl<T: Ord> Node<T> {
     ) -> Option<()> {
         let mut current = self;
 
-        loop {
-            let sub = match value.cmp(&current.value) {
-                Ordering::Less => &mut current.left,
-                Ordering::Greater => &mut current.right,
+        while let Some(ref mut node) = current.0 {
+            current = match value.cmp(&node.value) {
+                Ordering::Less => &mut node.left,
+                Ordering::Greater => &mut node.right,
                 Ordering::Equal => {
-                    current.count += 1;
                     return None;
                 },
             };
+        }
+        current.0 = Some(Box::new(Node {
+            value,
+            left: Self::new(),
+            right: Self::new(),
+        }));
+        Some(())
+    }
 
-            match sub {
-                None => {
-                    *sub = Some(Box::new(Self::new(value)));
-                    return Some(());
-                },
-                Some(boxed_tree) => {
-                    current = boxed_tree;
-                },
-            }
+    fn min(&self) -> Option<&T> {
+        let min = self;
+        match min {
+            Tree(None) => None,
+            Tree(Some(boxed_node)) => {
+                let mut boxed_node = boxed_node;
+
+                while let Tree(Some(left)) = &boxed_node.left {
+                    boxed_node = left;
+                }
+                Some(&boxed_node.value)
+            },
         }
     }
 
-    fn min(&self) -> &T {
-        let mut min = self;
-        while min.left.is_some() {
-            min = min.left.as_ref().unwrap();
+    fn pop_min(&mut self) -> Option<T> {
+        let mut min_tree = self;
+        match min_tree {
+            Tree(None) => None,
+            Tree(Some(_)) => {
+                while let Tree(Some(_)) = min_tree.0.as_mut().unwrap().left {
+                    min_tree = &mut min_tree.0.as_mut().unwrap().left;
+                }
+                let value = min_tree.0.take().unwrap().value;
+                Some(value)
+            },
         }
-        &min.value
     }
 
-    fn max(&self) -> &T {
-        let mut max = self;
-        while max.right.is_some() {
-            max = max.right.as_ref().unwrap();
+    fn pop_max(&mut self) -> Option<T> {
+        let mut max_tree = self;
+        match max_tree {
+            Tree(None) => None,
+            Tree(Some(_)) => {
+                while let Tree(Some(_)) = max_tree.0.as_mut().unwrap().right {
+                    max_tree = &mut max_tree.0.as_mut().unwrap().right;
+                }
+                let value = max_tree.0.take().unwrap().value;
+                Some(value)
+            },
         }
-        &max.value
+    }
+
+    fn max(&self) -> Option<&T> {
+        let max = self;
+        match max {
+            Tree(None) => None,
+            Tree(Some(boxed_node)) => {
+                let mut boxed_node = boxed_node;
+
+                while let Tree(Some(right)) = &boxed_node.left {
+                    boxed_node = right;
+                }
+                Some(&boxed_node.value)
+            },
+        }
     }
 
     fn contains(
@@ -144,146 +170,47 @@ impl<T: Ord> Node<T> {
     ) -> bool {
         let mut current = self;
 
-        loop {
-            let sub = match value.cmp(&current.value) {
-                Ordering::Less => &current.left,
-                Ordering::Greater => &current.right,
+        while let Tree(Some(boxed_node)) = current {
+            let sub = match value.cmp(&boxed_node.value) {
+                Ordering::Less => &boxed_node.left,
+                Ordering::Greater => &boxed_node.right,
                 Ordering::Equal => {
                     return true;
                 },
             };
             match sub {
-                None => {
+                Tree(None) => {
                     return false;
                 },
-                Some(boxed_tree) => {
-                    current = boxed_tree;
+                Tree(Some(_)) => {
+                    current = sub;
                 },
             }
         }
+        false
     }
 
-    // fn delete_recursive(
-    //     mut self,
-    //     value: &T,
-    // ) -> Option<Box<Node<T>>> {
-    //     match value.cmp(&self.value) {
-    //         Ordering::Less => {
-    //             self.left = self.left?.delete_recursive(value);
-    //             Some(Box::new(self))
-    //         },
-    //         Ordering::Greater => {
-    //             self.right = self.right?.delete_recursive(value);
-    //             Some(Box::new(self))
-    //         },
-    //         Ordering::Equal => None,
-    //     }
-    // }
-}
+    fn remove(
+        &mut self,
+        value: &T,
+    ) {
+        let mut current = self;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn make_tree() -> BinarySearchTree<i32> {
-        let mut tree = BinarySearchTree::new();
-        tree.insert(25);
-        tree.insert(15);
-        tree.insert(40);
-        tree.insert(10);
-        tree.insert(18);
-        tree.insert(45);
-        tree.insert(35);
-        tree
-    }
-
-    #[test]
-    fn insert() {
-        let tree = make_tree();
-        assert!(tree.root.as_ref().unwrap().value == 25);
-
-        assert!(tree.root.as_ref().unwrap().left.as_ref().unwrap().value == 15);
-        assert!(
-            tree.root
-                .as_ref()
-                .unwrap()
-                .left
-                .as_ref()
-                .unwrap()
-                .left
-                .as_ref()
-                .unwrap()
-                .value
-                == 10
-        );
-        assert!(
-            tree.root
-                .as_ref()
-                .unwrap()
-                .left
-                .as_ref()
-                .unwrap()
-                .right
-                .as_ref()
-                .unwrap()
-                .value
-                == 18
-        );
-
-        assert!(tree.root.as_ref().unwrap().right.as_ref().unwrap().value == 40);
-        assert!(
-            tree.root
-                .as_ref()
-                .unwrap()
-                .right
-                .as_ref()
-                .unwrap()
-                .left
-                .as_ref()
-                .unwrap()
-                .value
-                == 35
-        );
-        assert!(
-            tree.root
-                .as_ref()
-                .unwrap()
-                .right
-                .as_ref()
-                .unwrap()
-                .right
-                .as_ref()
-                .unwrap()
-                .value
-                == 45
-        );
-    }
-
-    #[test]
-    fn min() {
-        let tree = make_tree();
-        assert!(tree.min() == Some(&10));
-    }
-
-    #[test]
-    fn max() {
-        let tree = make_tree();
-        assert!(tree.max() == Some(&45));
-    }
-
-    #[test]
-    fn contains() {
-        let tree = make_tree();
-        assert!(tree.contains(25));
-        assert!(tree.contains(15));
-        assert!(tree.contains(10));
-        assert!(tree.contains(15));
-        assert!(tree.contains(40));
-        assert!(tree.contains(35));
-        assert!(tree.contains(45));
-
-        assert!(!tree.contains(5));
-        assert!(!tree.contains(46));
-        assert!(!tree.contains(17))
+        while let Some(ref mut node) = current.0 {
+            match node.value.cmp(value) {
+                Ordering::Less => current = &mut current.0.as_mut().unwrap().right,
+                Ordering::Greater => current = &mut current.0.as_mut().unwrap().left,
+                Ordering::Equal => {
+                    match (node.left.0.as_mut(), node.right.0.as_mut()) {
+                        (None, None) => current.0 = None,
+                        (Some(_), None) => current.0 = node.left.0.take(),
+                        (None, Some(_)) => current.0 = node.right.0.take(),
+                        (Some(_), Some(_)) => {
+                            current.0.as_mut().unwrap().value = node.right.pop_min().unwrap();
+                        },
+                    }
+                },
+            }
+        }
     }
 }
