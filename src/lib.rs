@@ -1,5 +1,8 @@
 use std::cmp::Ordering;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Debug)]
 pub struct BinarySearchTree<T: Ord> {
     root: Tree<T>,
@@ -25,10 +28,13 @@ impl<T: Ord> BinarySearchTree<T> {
     pub fn insert(
         &mut self,
         value: T,
-    ) {
+    ) -> Option<()> {
         if self.root.insert_unique(value).is_some() {
             self.size += 1;
-        };
+            Some(())
+        } else {
+            None
+        }
     }
 
     pub fn min(&self) -> Option<&T> {
@@ -41,7 +47,7 @@ impl<T: Ord> BinarySearchTree<T> {
 
     pub fn contains(
         &self,
-        value: T,
+        value: &T,
     ) -> bool {
         self.root.contains(value)
     }
@@ -57,8 +63,8 @@ impl<T: Ord> BinarySearchTree<T> {
     pub fn remove(
         &mut self,
         value: &T,
-    ) {
-        self.root.remove(value);
+    ) -> Option<()> {
+        self.root.remove(value).map(|_| self.size -= 1)
     }
 }
 
@@ -156,7 +162,7 @@ impl<T: Ord> Tree<T> {
             Tree(Some(boxed_node)) => {
                 let mut boxed_node = boxed_node;
 
-                while let Tree(Some(right)) = &boxed_node.left {
+                while let Tree(Some(right)) = &boxed_node.right {
                     boxed_node = right;
                 }
                 Some(&boxed_node.value)
@@ -166,7 +172,7 @@ impl<T: Ord> Tree<T> {
 
     fn contains(
         &self,
-        value: T,
+        value: &T,
     ) -> bool {
         let mut current = self;
 
@@ -193,7 +199,7 @@ impl<T: Ord> Tree<T> {
     fn remove(
         &mut self,
         value: &T,
-    ) {
+    ) -> Option<()> {
         let mut current = self;
 
         while let Some(ref mut node) = current.0 {
@@ -202,15 +208,27 @@ impl<T: Ord> Tree<T> {
                 Ordering::Greater => current = &mut current.0.as_mut().unwrap().left,
                 Ordering::Equal => {
                     match (node.left.0.as_mut(), node.right.0.as_mut()) {
-                        (None, None) => current.0 = None,
-                        (Some(_), None) => current.0 = node.left.0.take(),
-                        (None, Some(_)) => current.0 = node.right.0.take(),
+                        (None, None) => {
+                            current.0 = None;
+                            return Some(());
+                        },
+                        (Some(_), None) => {
+                            current.0 = node.left.0.take();
+                            return Some(());
+                        },
+                        (None, Some(_)) => {
+                            current.0 = node.right.0.take();
+
+                            return Some(());
+                        },
                         (Some(_), Some(_)) => {
                             current.0.as_mut().unwrap().value = node.right.pop_min().unwrap();
+                            return Some(());
                         },
                     }
                 },
             }
         }
+        None
     }
 }
