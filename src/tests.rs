@@ -37,6 +37,15 @@ fn bst() {
     assert!(tree.contains(&0));
     assert!(!tree.contains(&123));
 
+    assert_eq!(tree.successor(&-1), Some(&0));
+    assert_eq!(tree.predecessor(&-1), Some(&-10));
+
+    assert_eq!(tree.successor(&4), None);
+    assert_eq!(tree.predecessor(&4), Some(&3));
+
+    assert_eq!(tree.successor(&-10), Some(&-1));
+    assert_eq!(tree.predecessor(&-10), None);
+
     assert!(tree.remove(&100).is_none());
     assert!(tree.remove(&-1).is_some());
     assert!(tree.remove(&0).is_some());

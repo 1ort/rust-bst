@@ -66,6 +66,20 @@ impl<T: Ord> BinarySearchTree<T> {
     ) -> Option<()> {
         self.root.remove(value).map(|_| self.size -= 1)
     }
+
+    pub fn successor(
+        &self,
+        value: &T,
+    ) -> Option<&T> {
+        self.root.successor(value)
+    }
+
+    pub fn predecessor(
+        &self,
+        value: &T,
+    ) -> Option<&T> {
+        self.root.predecessor(value)
+    }
 }
 
 impl<T: Ord> Default for BinarySearchTree<T> {
@@ -230,5 +244,47 @@ impl<T: Ord> Tree<T> {
             }
         }
         None
+    }
+
+    fn successor(
+        &self,
+        value: &T,
+    ) -> Option<&T> {
+        let mut current = self;
+        let mut successor = None;
+
+        while let Tree(Some(node)) = current {
+            match value.cmp(&node.value) {
+                Ordering::Less => {
+                    successor = Some(&node.value);
+                    current = &node.left;
+                },
+                _ => {
+                    current = &node.right;
+                },
+            };
+        }
+        successor
+    }
+
+    fn predecessor(
+        &self,
+        value: &T,
+    ) -> Option<&T> {
+        let mut current = self;
+        let mut predecessor = None;
+
+        while let Tree(Some(node)) = current {
+            match value.cmp(&node.value) {
+                Ordering::Greater => {
+                    predecessor = Some(&node.value);
+                    current = &node.right;
+                },
+                _ => {
+                    current = &node.left;
+                },
+            };
+        }
+        predecessor
     }
 }
