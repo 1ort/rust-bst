@@ -1,3 +1,5 @@
+use std::vec;
+
 use crate::BinarySearchTree;
 
 #[test]
@@ -27,6 +29,15 @@ fn bst() {
     assert!(tree.insert(-10).is_some());
     assert!(tree.insert(3).is_some());
     assert!(tree.insert(0).is_none());
+
+    assert_eq!(
+        tree.inorder_traversal().collect::<Vec<&i32>>(),
+        vec![&-10, &-1, &0, &1, &2, &3, &4]
+    );
+    assert_eq!(
+        tree.reverse_order_traversal().collect::<Vec<&i32>>(),
+        vec![&4, &3, &2, &1, &0, &-1, &-10]
+    );
 
     assert_eq!(tree.size, 7);
 

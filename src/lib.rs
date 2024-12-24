@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{boxed, cmp::Ordering};
 
 #[cfg(test)]
 mod tests;
@@ -79,6 +79,20 @@ impl<T: Ord> BinarySearchTree<T> {
         value: &T,
     ) -> Option<&T> {
         self.root.predecessor(value)
+    }
+
+    pub fn inorder_traversal(&self) -> InorderTraversalIterator<T> {
+        InorderTraversalIterator {
+            stack: vec![],
+            current: self.root.0.as_ref().map(|boxed| boxed.as_ref()),
+        }
+    }
+
+    pub fn reverse_order_traversal(&self) -> ReverseOrderTraversalIterator<T> {
+        ReverseOrderTraversalIterator {
+            stack: vec![],
+            current: self.root.0.as_ref().map(|boxed| boxed.as_ref()),
+        }
     }
 }
 
@@ -286,5 +300,49 @@ impl<T: Ord> Tree<T> {
             };
         }
         predecessor
+    }
+}
+
+pub struct InorderTraversalIterator<'a, T: 'a + Ord> {
+    stack: Vec<&'a Node<T>>,
+    current: Option<&'a Node<T>>,
+}
+
+impl<'a, T: Ord> Iterator for InorderTraversalIterator<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> {
+        while let Some(node) = self.current {
+            self.stack.push(node);
+            self.current = node.left.0.as_ref().map(|boxed| boxed.as_ref());
+        }
+        if let Some(node) = self.stack.pop() {
+            self.current = node.right.0.as_ref().map(|boxed| boxed.as_ref());
+            Some(&node.value)
+        } else {
+            None
+        }
+    }
+}
+
+pub struct ReverseOrderTraversalIterator<'a, T: 'a + Ord> {
+    stack: Vec<&'a Node<T>>,
+    current: Option<&'a Node<T>>,
+}
+
+impl<'a, T: Ord> Iterator for ReverseOrderTraversalIterator<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> {
+        while let Some(node) = self.current {
+            self.stack.push(node);
+            self.current = node.right.0.as_ref().map(|boxed| boxed.as_ref());
+        }
+        if let Some(node) = self.stack.pop() {
+            self.current = node.left.0.as_ref().map(|boxed| boxed.as_ref());
+            Some(&node.value)
+        } else {
+            None
+        }
     }
 }
