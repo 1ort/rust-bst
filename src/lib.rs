@@ -1,4 +1,4 @@
-use std::{boxed, cmp::Ordering};
+use std::cmp::Ordering;
 
 #[cfg(test)]
 mod tests;
